@@ -1,6 +1,6 @@
 import re
 import os
-from typing import Union
+import sys
 import pandas as pd
 import customtkinter as ctk
 from tkinter import filedialog, messagebox

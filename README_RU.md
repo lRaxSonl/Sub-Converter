@@ -45,14 +45,7 @@ python sub_converter_ui_RU.py
 1. Сборка с PyInstaller:
 
 ```bash
-py -3.13 -m PyInstaller ^
-  --onefile ^
-  --windowed ^
-  --clean ^
-  --name sub_cutter ^
-  --icon icon.ico ^
-  --collect-all customtkinter ^
-  sub_converter_ui_RU.py
+py -3.13 -m PyInstaller --onefile --windowed --clean --name sub_converter_portable_RU --collect-all customtkinter --icon=icon.ico --add-data "icon.ico;." sub_converter_ui_RU.py
 ```
 
 2. Запуск:

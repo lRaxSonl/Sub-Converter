@@ -45,14 +45,7 @@ python sub_converter_ui_EN.py
 1. Build with PyInstaller:
 
 ```bash
-py -3.13 -m PyInstaller ^
-  --onefile ^
-  --windowed ^
-  --clean ^
-  --name sub_cutter ^
-  --icon icon.ico ^
-  --collect-all customtkinter ^
-  sub_converter_ui_EN.py
+py -3.13 -m PyInstaller --onefile --windowed --clean --name sub_converter_portable_EN --collect-all customtkinter --icon=icon.ico --add-data "icon.ico;." sub_converter_ui_EN.py
 ```
 
 2. Run the executable:
