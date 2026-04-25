@@ -1,10 +1,10 @@
 import re
 import os
 import sys
-import pandas as pd
 import customtkinter as ctk
-from tkinter import filedialog, messagebox
+from tkinter import TclError, filedialog, messagebox
 from datetime import datetime
+from PIL import Image, ImageTk
 
 ctk.set_appearance_mode("Dark")  # "Light" или "Dark"
 ctk.set_default_color_theme("blue")  # "blue", "green", "dark-blue"
@@ -22,55 +22,76 @@ def convert_ass_to_srt(file_path, nickname, output_file, output_text):
             messagebox.showwarning("Attention", "Select the input ASS file.")
             return
 
-        # If the output_file field is empty, save it to the same folder with the autoname.
         if not output_file.strip():
             base_name = os.path.splitext(os.path.basename(file_path))[0]
             date_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             nickname_safe = nickname.replace(" ", "_") if nickname else "unknown"
             output_file = os.path.join(os.path.dirname(file_path), f"{base_name}_{nickname_safe}_{date_str}.srt")
 
-        nickname_pattern = fr"\({re.escape(nickname)}\)"
+        nickname_pattern = re.compile(re.escape(nickname), re.IGNORECASE)
+
         with open(file_path, "r", encoding="utf-8") as f:
-            data = f.read()
+            content = f.read()
 
-        events_part = data.split("[Events]")[1].strip()
-        lines = [line.strip() for line in events_part.splitlines() if line.strip()]
+        # Find [Events] section
+        events_match = re.search(r'\[Events\]\s*(.*)', content, re.DOTALL)
+        if not events_match:
+            messagebox.showerror("Error", "No [Events] section found in the ASS file.")
+            return
+        events_part = events_match.group(1).strip()
 
-        format_line = next(line for line in lines if line.startswith("Format:"))
-        dialogue_lines = [line for line in lines if line.startswith("Dialogue:")]
-
-        columns = [c.strip() for c in format_line.split("Format:")[1].split(",")]
-        data_rows = [
-            [p.strip() for p in d.split("Dialogue:")[1].strip().split(",", len(columns) - 1)]
-            for d in dialogue_lines
-        ]
-
-        df = pd.DataFrame(data_rows, columns=columns)
-        df = df[["Start", "End", "Name", "Text"]]
-        df = df[df["Name"].str.contains(nickname_pattern, flags=re.IGNORECASE, regex=True, na=False)]
-
-        if df.empty:
-            messagebox.showwarning("Attention", f"No lines with a nickname were found. ({nickname})")
+        lines = [l.strip() for l in events_part.splitlines() if l.strip()]
+        format_line = next((l for l in lines if l.startswith("Format:")), None)
+        if not format_line:
+            messagebox.showerror("Error", "No Format line found in [Events].")
             return
 
-        df["Start"] = df["Start"].apply(ass_time_to_srt)
-        df["End"] = df["End"].apply(ass_time_to_srt)
-
+        columns = [c.strip() for c in format_line.split(":", 1)[1].split(",")]
+        dialogue_prefix = "Dialogue:"
+        
         srt_lines = []
-        for i, row in enumerate(df.itertuples(index=False), start=1):
-            text = re.sub(r"{.*?}", "", row.Text).replace("\\N", "\n").strip()
-            srt_lines.append(f"{i}\n{row.Start} --> {row.End}\n{text}\n")
+        idx = 1
+        found_any = False
+
+        for line in lines:
+            if not line.startswith(dialogue_prefix):
+                continue
+
+            # Safe split preserving commas inside the Text field
+            parts = line[len(dialogue_prefix):].strip().split(",", len(columns) - 1)
+            if len(parts) < len(columns):
+                continue
+
+            row = {col: parts[i].strip() for i, col in enumerate(columns)}
+            name_field = row.get("Name", "")
+            
+            if not nickname_pattern.search(name_field):
+                continue
+
+            found_any = True
+            start_time = ass_time_to_srt(row.get("Start", "0:00:00.00"))
+            end_time = ass_time_to_srt(row.get("End", "0:00:00.00"))
+            text = re.sub(r"\{.*?\}", "", row.get("Text", "")).replace("\\N", "\n").strip()
+
+            srt_lines.append(f"{idx}\n{start_time} --> {end_time}\n{text}\n")
+            idx += 1
+
+        if not found_any:
+            messagebox.showwarning("Attention", f"No lines with nickname '{nickname}' were found.")
+            return
 
         srt_content = "\n".join(srt_lines).strip()
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(srt_content)
 
         output_text.configure(state="normal")
-        output_text.delete("1.0", ctk.END)
-        output_text.insert(ctk.END, f"✅ Ready! Found {len(df)} lines with a nickname ({nickname}).\nSaved in:\n{output_file}")
+        output_text.delete("1.0", "end")
+        output_text.insert("end", f"✅ Ready! Found {len(srt_lines)} lines with nickname '{nickname}'.\nSaved in:\n{output_file}")
         output_text.configure(state="disabled")
+
     except Exception as e:
         messagebox.showerror("Error", str(e))
+
 
 def browse_file(entry):
     file_path = filedialog.askopenfilename(filetypes=[("ASS files", "*.ass")])
@@ -98,7 +119,17 @@ app = ctk.CTk()
 app.title("ASS → SRT Converter")
 app.geometry("700x500")
 app.resizable(False, False)  # fixed window size
-app.iconbitmap(resource_path("icon.ico")) # icon
+try:
+    app.iconbitmap(resource_path("icon.ico")) # icon
+except TclError:
+    try:
+        icon_png = resource_path("icon.png")
+        if os.path.exists(icon_png):
+            pil_image = Image.open(icon_png)
+            tk_image = ImageTk.PhotoImage(pil_image)
+            app.iconphoto(True, tk_image)
+    except Exception as e:
+        print(f"Warning: Could not set icon: {e}")
 
 # Output file
 ctk.CTkLabel(app, text="Select the ASS file:").pack(pady=5)

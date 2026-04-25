@@ -28,7 +28,7 @@ cd Sub-Converter
 pip install -r requirements.txt
 ```
 
-*(customtkinter and pandas)*
+*(customtkinter)*
 
 ---
 
@@ -37,7 +37,7 @@ pip install -r requirements.txt
 ### Via Python
 
 ```bash
-python sub_converter_ui_EN.py
+python sub_converter_ui.py
 ```
 
 ### Via compiled `.exe` (Windows)
@@ -45,13 +45,13 @@ python sub_converter_ui_EN.py
 1. Build with PyInstaller:
 
 ```bash
-py -3.13 -m PyInstaller --onefile --windowed --clean --name sub_converter_portable_EN --collect-all customtkinter --icon=icon.ico --add-data "icon.ico;." sub_converter_ui_EN.py
+py -3.13 -m PyInstaller --onefile --windowed --clean --name sub_converter --collect-all customtkinter --icon=icon.ico --add-data "icon.ico;." sub_converter_ui.py
 ```
 
 2. Run the executable:
 
 ```bash
-dist\sub_cutter.exe
+dist\sub_converter.exe
 ```
 
 ---
@@ -69,7 +69,6 @@ dist\sub_cutter.exe
 ## ⚡ Requirements
 
 * Python 3.13+
-* pandas
 * customtkinter
 
 ---
