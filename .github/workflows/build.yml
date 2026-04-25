@@ -1,0 +1,44 @@
+name: Build Cross-Platform
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            icon: icon.ico
+            sep: ";"          # Разделитель для Windows
+            artifact: SubConverter-Windows
+          - os: ubuntu-latest
+            icon: icon.png
+            sep: ":"          # Разделитель для Linux
+            artifact: SubConverter-Linux
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build with PyInstaller
+        run: >
+          pyinstaller --onedir --windowed
+          --icon=${{ matrix.icon }}
+          --add-data "${{ matrix.icon }}${{ matrix.sep }}."
+          --hidden-import PIL
+          --hidden-import customtkinter
+          --clean
+          --name "SubConverter" sub_converter_ui.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/SubConverter/
